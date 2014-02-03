@@ -1,0 +1,330 @@
+<?php
+
+require_once 'config.php';
+require_once 'mirror-client.php';
+require_once 'google-api-php-client/src/Google_Client.php';
+require_once 'google-api-php-client/src/contrib/Google_MirrorService.php';
+require_once 'util.php';
+
+$client = get_google_api_client();
+
+// Authenticate if we're not already
+if (!isset($_SESSION['userid']) || get_credentials($_SESSION['userid']) == null) {
+  header('Location: ' . $base_url . '/oauth2callback.php');
+  exit;
+} else {
+  $client->setAccessToken(get_credentials($_SESSION['userid']));
+}
+
+// A glass service for interacting with the Mirror API
+$mirror_service = new Google_MirrorService($client);
+
+// But first, handle POST data from the form (if there is any)
+switch ($_POST['operation']) {
+
+  case "insertItemWithAction":
+    send_test_bundle($mirror_service);
+    $message = "Your test screens have been sent!";
+    break;
+
+  case "deleteAllItems":
+    $message = delete_test_bundles($mirror_service);
+    break;
+
+}
+
+?>
+<!doctype html>
+<!--
+Copyright (C) 2013 glassagram.com
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Authors:
+  Winona Tong - http://winonatong.com
+-->
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iSeeDeadPixels</title>
+  <link href="./static/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <style>
+    .button-icon { max-width: 75px; }
+    .tile {
+      border-left: 1px solid #444;
+      padding: 5px;
+      list-style: none;
+    }
+      form {display: inline;}
+  </style>
+</head>
+<body>
+<div class="navbar navbar-inverse navbar-fixed-top">
+  <div class="navbar-inner">
+    <div class="container">
+      <a class="brand" href="#">iSeeDeadPixels</a>
+      <div class="nav-collapse collapse">
+        <form class="navbar-form pull-right" action="signout.php" method="post">
+          <button type="submit" class="btn">Sign out</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="hero-unit">
+    <h1>Welcome!</h1>
+      <?php if ($message != "") { ?>
+          <span class="label label-success"><?= $message ?> </span>
+      <?php } ?>
+    <div style="margin-top: 5px;">
+        <p>When you first sign in, iSeeDeadPixels sends you a bundle of solid coloured screens to help you test your display. If these screens disappear from your timeline, you can click on the button below to send yourself another copy.</p>
+
+        <form method="post">
+            <input type="hidden" name="operation" value="insertItemWithAction">
+            <button id="send-screens" class="btn btn-primary" type="submit">Send the test screens to me!</button>
+        </form>
+
+      <form method="post">
+          <input type="hidden" name="operation" value="deleteAllItems">
+          <button id="wipe-glass" class="btn" type="submit">Delete test screens</button>
+      </form>
+
+    </div>
+    <div style="clear:both;"></div>
+  </div>
+
+  <div class="row">
+    <div class="span6">
+        <h2>Black</h2>
+        <img src="static/images/black.png"/>
+        <p>
+            <ul>
+                <li>"Stuck" or "hot" pixels are permanently turned on and look white on a 100% black screen.</li>
+                <li>You may also see stuck subpixels of other colours:
+                    <ul>
+                        <li>Red = a red subpixel is stuck</li>
+                        <li>Green = a green subpixel is stuck</li>
+                        <li>Blue = a blue subpixel is stuck</li>
+                        <li>Magenta = red and blue subpixels are stuck </li>
+                        <li>Yellow = red and green subpixels are stuck</li>
+                        <li>Cyan = green and blue subpixels are stuck</li>
+                    </ul>
+                </li>
+            </ul>
+        </p>
+
+    </div>
+    <div class="span6">
+        <h2>White</h2>
+        <img src="static/images/white.png" style="border:1px solid #000;"/>
+        <p>
+            <ul>
+                <li>Dead pixels look black on a 100% white screen.</li>
+                <li>You may also see partially dead subpixels in the form of colored dots:
+                    <ul>
+                        <li>Magenta = a green subpixel is dead</li>
+                        <li>Yellow = a blue subpixel is dead</li>
+                        <li>Cyan = a red subpixel is dead</li>
+                        <li>Red = green and blue subpixels are dead</li>
+                        <li>Green = red and blue subpixels are dead</li>
+                        <li>Blue = red and green subpixels are dead</li>
+                    </ul>
+                </li>
+            </ul>
+        </p>
+
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="span4">
+        <h2>Red</h2>
+        <img src="static/images/red.png"/>
+        <p>
+        <ul>
+            <li>A dead red subpixel looks black on a 100% red screen.</li>
+            <li>A stuck green subpixel looks yellow against red.</li>
+            <li>A stuck blue subpixel looks magenta against red, but is difficult to see.</li>
+        </ul>
+        </p>
+
+    </div>
+    <div class="span4">
+        <h2>Green</h2>
+        <img src="static/images/green.png"/>
+        <p>
+        <ul>
+            <li>A dead green subpixel looks black on a 100% green screen.</li>
+            <li>A stuck blue subpixel looks cyan against green, but is difficult to see.</li>
+            <li>A stuck red subpixel looks yellow against green, but is difficult to see.</li>
+        </ul>
+        </p>
+    </div>
+
+    <div class="span4">
+        <h2>Blue</h2>
+        <img src="static/images/blue.png"/>
+        <p>
+        <ul>
+            <li>A dead blue subpixel looks black on a 100% blue screen.</li>
+            <li>A stuck red subpixel looks magenta against blue.</li>
+            <li>A stuck green subpixel looks cyan against blue.</li>
+        </ul>
+        </p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="span4">
+        <h2>Magenta</h2>
+        <img src="static/images/magenta.png"/>
+        <p>
+        <ul>
+            <li>A dead red subpixel looks blue on a magenta screen.</li>
+            <li>A dead blue subpixel looks red against magenta, but is difficult to see.</li>
+            <li>A stuck green subpixel looks white against magenta.</li>
+        </ul>
+        </p>
+    </div>
+
+    <div class="span4">
+        <h2>Yellow</h2>
+        <img src="static/images/yellow.png"/>
+        <p>
+        <ul>
+            <li>A dead green subpixel looks red on a yellow screen.</li>
+            <li>A dead red subpixel looks green against yellow, but is difficult to see.</li>
+            <li>A stuck blue subpixel looks white against yellow, but is difficult to see.</li>
+        </ul>
+        </p>
+    </div>
+
+    <div class="span4">
+        <h2>Cyan</h2>
+        <img src="static/images/cyan.png"/>
+        <p>
+        <ul>
+            <li>A dead green subpixel looks blue on a cyan screen.</li>
+            <li>A dead blue subpixel looks green against cyan, but is difficult to see.</li>
+            <li>A stuck red subpixel looks white against cyan.</li>
+        </ul>
+        </p>
+    </div>
+  </div>
+</div>
+
+<script
+    src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script src="/static/bootstrap/js/bootstrap.min.js"></script>
+<script>
+    var deletedCount = 0;
+    var clientId = '919841851739.apps.googleusercontent.com';
+    $(document).ready(function () {
+        $("#send-screens").click(function (event) {
+            gapi.auth.authorize({
+                client_id: clientId,
+                scope: 'https://www.googleapis.com/auth/glass.timeline',
+                immediate: false
+            }, function () {
+                gapi.client.load('mirror', 'v1', sendScreens);
+            });
+        });
+        $("#wipe-glass").click(function (event) {
+            // Reset the deletion counter
+            deletedCount = 0;
+            gapi.auth.authorize({
+                client_id: clientId,
+                scope: 'https://www.googleapis.com/auth/glass.timeline',
+                immediate: false
+            }, function () {
+                gapi.client.load('mirror', 'v1', wipeGlass);
+            });
+        });
+
+        function sendScreens() {
+
+
+        }
+
+        function wipeGlass(pageToken) {
+            var request = gapi.client.mirror.timeline.list({
+                maxResults:100,
+                pageToken:pageToken});
+
+            request.execute(function (response) {
+                console.log("Fetched ");
+                console.log(response);
+
+                if(response.items) {
+                    // Delete every card in this result set
+                    $.each(response.items, function () {
+                        deleteCard(this.id);
+                    });
+
+                    // If there's a nextPageToken, there's more stuff to purge.
+                    if (response.nextPageToken) {
+                        // Do the same thing again, for the next page
+                        wipeGlass(response.nextPageToken);
+                    } else {
+                        console.log("Done!");
+                    }
+                } else {
+                    logStatus("Nothing to delete!");
+                }
+            });
+        }
+    });
+
+    function deleteCard(cardId) {
+        console.log("deleting " + cardId);
+
+        var request = gapi.client.mirror.timeline.delete({id: cardId});
+        request.execute(function (response) {
+            logStatus(++deletedCount);
+            console.log("deleted");
+            console.log(response);
+        });
+    }
+
+    function logStatus(text) {
+        $("#progress").html(text);
+    }
+
+    function handleAuthResult(authResult) {
+        if (authResult && !authResult.error) {
+            makeApiCall();
+        } else {
+            logStatus("auth failed! " + authResult);
+        }
+    }
+
+</script>
+<script src="https://apis.google.com/js/client.js?onload=handleClientLoad"></script>
+<script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script>
+<!-- If you copy this code, you probably want to change this Google Analytics
+     snippet -->
+<script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-40492558-1', 'cremeglass.com');
+    ga('send', 'pageview');
+</script>
+</body>
+</html>
