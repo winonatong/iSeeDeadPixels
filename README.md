@@ -1,7 +1,7 @@
 iSeeDeadPixels
 ========================
 
-This is a utility to test the screen on Google Glass for defective pixels.
+iSeeDeadPixels is a utility to test the screen on Google Glass for defective pixels.
 
 If you want to use this software, simply go to http://cremeglass.com/iseedeadpixels/ and sign in with the Google account that you are using with Glass.
 
@@ -16,3 +16,5 @@ $base_url = "<URL where you are running iSeeDeadPixels>";
 
 $sqlite_database = "<location of your sqlite database>";
 ```
+
+A template file for config.php is provided. Simply rename config.php.template and fill in your API credentials.
